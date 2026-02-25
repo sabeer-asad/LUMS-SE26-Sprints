@@ -6,11 +6,16 @@ import android.os.Bundle;
 //import android.widget.ArrayAdapter;
 //import android.widget.Button;
 //import android.widget.EditText;
+import android.util.Log;
 import android.widget.ListView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 //import java.util.Arrays;
@@ -21,18 +26,16 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.A
     CityArrayAdapter cityAdapter;
     ArrayList<City> dataList;
     int selectedCityPosition = -1;
+    private FirebaseFirestore db;
+    private CollectionReference citiesRef;
 
     @Override
     public void addCity(City city) {
-        if (selectedCityPosition == -1) {
-            // ADD MODE
-            dataList.add(city);
-        } else {
-            // EDIT MODE
-            dataList.set(selectedCityPosition, city);
-            selectedCityPosition = -1; // reset
-        }
+        dataList.add(city);
         cityAdapter.notifyDataSetChanged();
+
+        DocumentReference docRef = citiesRef.document(city.getName());
+        docRef.set(city);
     }
 
     @Override
@@ -55,13 +58,32 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.A
 //        final Button btnDelete = findViewById(R.id.button_delete);
 
         // 2. Initialize data and view
-        String[] cities = {"Islamabad", "Karachi", "Lahore", "Multan", "Sialkot", "Faisalabad", "Gujarat", "Quetta", "Bahawalpur", "Peshawar"};
-        String[] provinces = {"CT", "SD", "PJ", "PJ", "PJ", "PJ", "PJ", "PJ", "BL", "PJ", "KPK"};
+//        String[] cities = {"Islamabad", "Karachi", "Lahore", "Multan", "Sialkot", "Faisalabad", "Gujarat", "Quetta", "Bahawalpur", "Peshawar"};
+//        String[] provinces = {"CT", "SD", "PJ", "PJ", "PJ", "PJ", "PJ", "PJ", "BL", "PJ", "KPK"};
+
+        db = FirebaseFirestore.getInstance();
+        citiesRef = db.collection("cities");
+
+        citiesRef.addSnapshotListener((value, error) -> {
+            if (error != null) {
+                Log.e("Firestore: ", error.toString());
+            }
+
+            if (value != null && !value.isEmpty()) {
+                dataList.clear();
+                for (QueryDocumentSnapshot snapshot : value) {
+                    String name = snapshot.getString("name");
+                    String province = snapshot.getString("province");
+                    dataList.add(new City(name, province));
+                }
+                cityAdapter.notifyDataSetChanged();
+            }
+        });
 
         dataList = new ArrayList<>();
-        for (int i = 0; i < cities.length; i++) {
-            dataList.add(new City(cities[i], provinces[i]));
-        }
+//        for (int i = 0; i < cities.length; i++) {
+//            dataList.add(new City(cities[i], provinces[i]));
+//        }
 
         cityAdapter = new CityArrayAdapter(this, dataList);
         cityList.setAdapter(cityAdapter);
@@ -77,6 +99,12 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.A
             City selectedCity = dataList.get(position); // [cite: 118]
             // Open fragment in "Edit Mode"
             AddCityFragment.newInstance(selectedCity).show(getSupportFragmentManager(), "Edit City");
+        });
+
+        cityList.setOnItemLongClickListener((parent, view, position, id) -> {
+            City selectedCity = dataList.get(position);
+            citiesRef.document(selectedCity.getName()).delete();
+            return true;
         });
 
 //        // 3. ADD logic
