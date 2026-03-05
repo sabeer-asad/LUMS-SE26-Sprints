@@ -1,6 +1,7 @@
 package com.example.listycity;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * This class represents a City with a name and a province.
@@ -49,5 +50,18 @@ public class City implements Serializable, Comparable {
     public int compareTo(Object o) {
         City city = (City) o;
         return this.name.compareTo(city.getName()); // this.city refers to the city name
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        City city = (City) o;
+        return Objects.equals(name, city.name) && Objects.equals(province, city.province);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, province);
     }
 }
